@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 
 namespace FileSearchApp
 {
@@ -8,24 +7,61 @@ namespace FileSearchApp
     {
         static void Main(string[] args)
         {
-            // Ask for the directory to search in
-            Console.Write("Enter the directory to search in: ");
-            string directoryPath = Console.ReadLine();
+            string settingsFilePath = "program.settings";
+            string directoryPath = null;
 
-            // Ask for the keyword to search for
-            Console.Write("Enter the keyword to search for: ");
+            if (File.Exists(settingsFilePath))
+            {
+                directoryPath = File.ReadAllText(settingsFilePath);
+                Console.WriteLine($"Using last used directory: {directoryPath}");
+            }
+
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                Console.Write("Enter the directory to search in: ");
+                directoryPath = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+                {
+                    Console.WriteLine("Invalid directory. Exiting application.");
+                    return;
+                }
+
+                SaveLastUsedDirectory(settingsFilePath, directoryPath);
+            }
+
+            // Ask for the keyword to search for or change directory
+            Console.Write("Enter the keyword to search for (or type 'd' to change directory): ");
             string keyword = Console.ReadLine();
 
-            if (string.IsNullOrEmpty(directoryPath) || string.IsNullOrEmpty(keyword))
+            if (string.IsNullOrEmpty(keyword))
             {
-                Console.WriteLine("Invalid directory or keyword. Exiting application.");
+                Console.WriteLine("Invalid keyword. Exiting application.");
                 return;
             }
 
-            if (!Directory.Exists(directoryPath))
+            if (keyword.ToLower() == "d")
             {
-                Console.WriteLine("Directory does not exist. Exiting application.");
-                return;
+                Console.Write("Enter the new directory to search in: ");
+                directoryPath = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+                {
+                    Console.WriteLine("Invalid directory. Exiting application.");
+                    return;
+                }
+
+                SaveLastUsedDirectory(settingsFilePath, directoryPath);
+
+                // Ask for the keyword to search for
+                Console.Write("Enter the keyword to search for: ");
+                keyword = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(keyword))
+                {
+                    Console.WriteLine("Invalid keyword. Exiting application.");
+                    return;
+                }
             }
 
             // Get all .cs files in the directory and its subdirectories
@@ -48,6 +84,11 @@ namespace FileSearchApp
             }
 
             Console.WriteLine("Search complete.");
+        }
+
+        static void SaveLastUsedDirectory(string filePath, string directory)
+        {
+            File.WriteAllText(filePath, directory);
         }
     }
 }
