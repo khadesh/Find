@@ -1,75 +1,109 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using Newtonsoft.Json;
 
 namespace Find
 {
     class Program
     {
+        static string[] fileExtensions = { "*.cs", "*.js", "*.css" };
+        static string settingsFilePath = "program.settings";
+
         static void Main(string[] args)
         {
-            string settingsFilePath = "program.settings";
-            string directoryPath = null;
+            Settings settings = LoadSettings(settingsFilePath);
 
-            if (File.Exists(settingsFilePath))
+            if (settings != null)
             {
-                directoryPath = File.ReadAllText(settingsFilePath);
-                Console.WriteLine($"Using last used directory: {directoryPath}");
+                fileExtensions = settings.FileExtensions;
+                Console.WriteLine($"Using last used directory: {settings.DirectoryPath}");
+                Console.WriteLine($"Using last used file extensions: {string.Join(", ", fileExtensions)}");
+            }
+            else
+            {
+                settings = new Settings();
             }
 
-            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            if (string.IsNullOrEmpty(settings.DirectoryPath) || !Directory.Exists(settings.DirectoryPath))
             {
                 Console.Write("Enter the directory to search in: ");
-                directoryPath = Console.ReadLine();
+                settings.DirectoryPath = Console.ReadLine();
 
-                if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+                if (string.IsNullOrEmpty(settings.DirectoryPath) || !Directory.Exists(settings.DirectoryPath))
                 {
                     Console.WriteLine("Invalid directory. Exiting application.");
                     return;
                 }
 
-                SaveLastUsedDirectory(settingsFilePath, directoryPath);
+                SaveSettings(settingsFilePath, settings);
             }
 
             while (true)
             {
-                // Ask for the keyword to search for or change directory
-                Console.Write("Enter the keyword to search for (or type 'd' to change directory, or 'q' to quit): ");
-                string keyword = Console.ReadLine();
+                // Display the current file extensions
+                Console.WriteLine($"Current file extensions: {string.Join(", ", fileExtensions)}");
 
-                if (string.IsNullOrEmpty(keyword))
+                // Ask for the keyword to search for, change directory, or change file extensions
+                Console.Write("Enter the keyword to search for (or type 'd' to change directory, 'f' to change file extensions, or 'q' to quit): ");
+                string input = Console.ReadLine();
+
+                if (string.IsNullOrEmpty(input))
                 {
                     Console.WriteLine("Invalid input. Please try again.");
                     continue;
                 }
 
-                if (keyword.ToLower() == "q")
+                if (input.ToLower() == "q")
                 {
                     Console.WriteLine("Exiting application.");
                     break;
                 }
 
-                if (keyword.ToLower() == "d")
+                if (input.ToLower() == "d")
                 {
                     Console.Write("Enter the new directory to search in: ");
-                    directoryPath = Console.ReadLine();
+                    settings.DirectoryPath = Console.ReadLine();
 
-                    if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+                    if (string.IsNullOrEmpty(settings.DirectoryPath) || !Directory.Exists(settings.DirectoryPath))
                     {
                         Console.WriteLine("Invalid directory. Exiting application.");
                         return;
                     }
 
-                    SaveLastUsedDirectory(settingsFilePath, directoryPath);
+                    SaveSettings(settingsFilePath, settings);
                     continue;
                 }
 
-                // Get all .cs files in the directory and its subdirectories
-                var csFiles = Directory.GetFiles(directoryPath, "*.cs", SearchOption.AllDirectories);
+                if (input.ToLower().StartsWith("f"))
+                {
+                    Console.WriteLine("Enter the new file extensions as a comma-separated list (e.g., .cs,.js,.css):");
+                    string extensions = Console.ReadLine();
 
-                Console.WriteLine($"Searching for \"{keyword}\" in .cs files...\n");
+                    if (string.IsNullOrEmpty(extensions))
+                    {
+                        Console.WriteLine("Invalid file extensions. Please try again.");
+                        continue;
+                    }
+
+                    settings.FileExtensions = extensions.Split(',')
+                                                         .Select(ext => $"*{ext.Trim()}")
+                                                         .ToArray();
+                    fileExtensions = settings.FileExtensions;
+                    Console.WriteLine($"File extensions updated: {string.Join(", ", fileExtensions)}");
+                    SaveSettings(settingsFilePath, settings);
+                    continue;
+                }
+
+                string keyword = input;
+
+                // Get all files with the specified extensions in the directory and its subdirectories
+                var files = fileExtensions.SelectMany(pattern => Directory.GetFiles(settings.DirectoryPath, pattern, SearchOption.AllDirectories)).ToArray();
+
+                Console.WriteLine($"Searching for \"{keyword}\" in {string.Join(", ", fileExtensions)} files...\n");
 
                 bool found = false;
-                foreach (var file in csFiles)
+                foreach (var file in files)
                 {
                     string[] lines = File.ReadAllLines(file);
                     for (int i = 0; i < lines.Length; i++)
@@ -96,9 +130,26 @@ namespace Find
             }
         }
 
-        static void SaveLastUsedDirectory(string filePath, string directory)
+        static void SaveSettings(string filePath, Settings settings)
         {
-            File.WriteAllText(filePath, directory);
+            var json = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(filePath, json);
         }
+
+        static Settings LoadSettings(string filePath)
+        {
+            if (File.Exists(filePath))
+            {
+                var json = File.ReadAllText(filePath);
+                return JsonConvert.DeserializeObject<Settings>(json);
+            }
+            return null;
+        }
+    }
+
+    class Settings
+    {
+        public string DirectoryPath { get; set; }
+        public string[] FileExtensions { get; set; } = { "*.cs", "*.js", "*.css" };
     }
 }
