@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace FileSearchApp
+namespace Find
 {
     class Program
     {
