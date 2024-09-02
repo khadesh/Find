@@ -107,10 +107,10 @@ namespace Find
 
                         totalLines += linesCount;
 
-                        Console.WriteLine($"{pattern}: {linesCount.ToString("N")} lines in {files.Length.ToString("N")} files.");
+                        Console.WriteLine($"{pattern}: {linesCount.ToString("N").Replace(".00","")} lines in {files.Length.ToString("N").Replace(".00", "")} files.");
                     }
 
-                    Console.WriteLine($"Total lines in all files: {totalLines.ToString("N")}\n");
+                    Console.WriteLine($"Total lines in all files: {totalLines.ToString("N").Replace(".00", "")}\n");
                     continue;
                 }
 
