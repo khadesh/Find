@@ -44,8 +44,8 @@ namespace Find
                 // Display the current file extensions
                 Console.WriteLine($"Current file extensions: {string.Join(", ", fileExtensions)}");
 
-                // Ask for the keyword to search for, change directory, or change file extensions
-                Console.Write("Enter the keyword to search for (or type 'd' to change directory, 'f' to change file extensions, or 'q' to quit): ");
+                // Ask for the keyword to search for, change directory, change file extensions, or count lines
+                Console.Write("Enter the keyword to search for (or type 'd' to change directory, 'f' to change file extensions, 'c' to count lines, or 'q' to quit): ");
                 string input = Console.ReadLine();
 
                 if (string.IsNullOrEmpty(input))
@@ -95,15 +95,34 @@ namespace Find
                     continue;
                 }
 
+                if (input.ToLower() == "c")
+                {
+                    Console.WriteLine("Counting lines in files...");
+
+                    int totalLines = 0;
+                    foreach (var pattern in fileExtensions)
+                    {
+                        var files = Directory.GetFiles(settings.DirectoryPath, pattern, SearchOption.AllDirectories);
+                        int linesCount = files.Sum(file => File.ReadLines(file).Count());
+
+                        totalLines += linesCount;
+
+                        Console.WriteLine($"{pattern}: {linesCount.ToString("N")} lines in {files.Length.ToString("N")} files.");
+                    }
+
+                    Console.WriteLine($"Total lines in all files: {totalLines.ToString("N")}\n");
+                    continue;
+                }
+
                 string keyword = input;
 
                 // Get all files with the specified extensions in the directory and its subdirectories
-                var files = fileExtensions.SelectMany(pattern => Directory.GetFiles(settings.DirectoryPath, pattern, SearchOption.AllDirectories)).ToArray();
+                var filesToSearch = fileExtensions.SelectMany(pattern => Directory.GetFiles(settings.DirectoryPath, pattern, SearchOption.AllDirectories)).ToArray();
 
                 Console.WriteLine($"Searching for \"{keyword}\" in {string.Join(", ", fileExtensions)} files...\n");
 
                 bool found = false;
-                foreach (var file in files)
+                foreach (var file in filesToSearch)
                 {
                     string[] lines = File.ReadAllLines(file);
                     for (int i = 0; i < lines.Length; i++)
@@ -129,6 +148,7 @@ namespace Find
                 Console.WriteLine("Search complete.\n");
             }
         }
+
 
         static void SaveSettings(string filePath, Settings settings)
         {
